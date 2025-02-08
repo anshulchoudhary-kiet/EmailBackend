@@ -10,13 +10,14 @@ import java.util.Map;
 
 @Service
 public class EmailGeneratorService {
+
     private final WebClient webClient;
 
     @Value("${gemini.api.url}")
     private String geminiApiUrl;
 
     @Value("${gemini.api.key}")
-    private String geminiApikey;
+    private String geminiApiKey;
 
     public EmailGeneratorService(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.build();
@@ -26,25 +27,26 @@ public class EmailGeneratorService {
         // Build the prompt
         String prompt = buildPrompt(emailRequest);
 
-        // Craft request body
+        // Craft a request
         Map<String, Object> requestBody = Map.of(
                 "contents", new Object[] {
-                        Map.of("parts", new Object[] {
+                        Map.of("parts", new Object[]{
                                 Map.of("text", prompt)
                         })
                 }
         );
 
-        // Send request and get response
+        // Do request and get response
+        String fullUrl = geminiApiUrl + "/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey;
         String response = webClient.post()
-                .uri(geminiApiUrl + "?key=" + geminiApikey)  // Correct URL format
-                .header("Content-Type", "application/json")
-                .bodyValue(requestBody)  // Use bodyValue() to pass the request body
+                .uri(fullUrl)
+                .header("Content-Type","application/json")
+                .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
 
-        // Extract and return response content
+        // Extract Response and Return
         return extractResponseContent(response);
     }
 
@@ -52,9 +54,13 @@ public class EmailGeneratorService {
         try {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode rootNode = mapper.readTree(response);
-            return rootNode.path("candidates").path(0)
-                    .path("content").path("parts").path(0)
-                    .path("text").asText("No response text found");
+            return rootNode.path("candidates")
+                    .get(0)
+                    .path("content")
+                    .path("parts")
+                    .get(0)
+                    .path("text")
+                    .asText();
         } catch (Exception e) {
             return "Error processing request: " + e.getMessage();
         }
@@ -62,12 +68,11 @@ public class EmailGeneratorService {
 
     private String buildPrompt(EmailRequest emailRequest) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("Generate a professional email reply for the following email content. Please don't generate a subject line. ");
+        prompt.append("Generate a professional email reply for hte following email content. Please don't generate a subject line ");
         if (emailRequest.getTone() != null && !emailRequest.getTone().isEmpty()) {
-            prompt.append("Use a ").append(emailRequest.getTone()).append(" tone. ");
+            prompt.append("Use a ").append(emailRequest.getTone()).append(" tone.");
         }
-        prompt.append("\nOriginal email:\n").append(emailRequest.getEmailContent());
-
+        prompt.append("\nOriginal email: \n").append(emailRequest.getEmailContent());
         return prompt.toString();
     }
 }
