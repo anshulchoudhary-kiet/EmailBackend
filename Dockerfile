@@ -28,6 +28,6 @@ RUN mvn clean package -DskipTests
 
 # Run Stage
 FROM openjdk:17.0.1-jdk-slim
-COPY --from=build /workspace/target/email-writer-sb-0.0.1-SNAPSHOT.jar email-writer-sb.jar
+COPY --from=build /target/email-writer-sb-0.0.1-SNAPSHOT.jar email-writer-sb.jar
 EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "email-writer-sb.jar"]
